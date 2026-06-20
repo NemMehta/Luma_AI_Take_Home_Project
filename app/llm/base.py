@@ -14,14 +14,16 @@ class LLMClient(ABC):
     """
 
     @abstractmethod
-    def generate(self, prompt: str, image: str | None = None) -> str:
+    def generate(self, prompt: str, image: str | None = None, *, json_object: bool = False) -> str:
         """Generate a text response for ``prompt``.
 
         Args:
             prompt: The text prompt.
-            image: Optional path to a PNG file on disk, as a plain string. The
-                implementation reads and encodes the bytes itself; no image
-                objects cross this interface.
+            image: Optional path to an image file (PNG or JPEG) on disk, as a
+                plain string. The implementation reads and encodes the bytes
+                itself; no image objects cross this interface.
+            json_object: When True, ask the provider to return a single valid
+                JSON object. The prompt must still describe the desired shape.
 
         Returns:
             The model's text response.
