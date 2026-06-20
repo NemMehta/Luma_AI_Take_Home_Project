@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fruit Finder</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <h1>Fruit Finder</h1>
+    <label for="search">Search fruits</label>
+    <input
+      id="search"
+      data-testid="search-input"
+      type="search"
+      placeholder="Type to filter…"
+      autocomplete="off"
+    />
+    <ul id="results" data-testid="results"></ul>
+    <p id="empty-state" data-testid="empty-state" hidden>No matches</p>
+    <script src="app.js"></script>
+  </body>
+</html>

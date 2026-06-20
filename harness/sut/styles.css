@@ -1,0 +1,38 @@
+body {
+  font-family: system-ui, sans-serif;
+  max-width: 32rem;
+  margin: 2rem auto;
+  padding: 0 1rem;
+  color: #1a1a1a;
+}
+
+h1 {
+  font-size: 1.25rem;
+}
+
+#search {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+#results {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0 0;
+}
+
+.result-item {
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid #eee;
+}
+
+#empty-state {
+  color: #888;
+  margin-top: 1rem;
+}
+
+[hidden] {
+  display: none;
+}
