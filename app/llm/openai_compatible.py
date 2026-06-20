@@ -1,6 +1,8 @@
-"""OpenRouter implementation of the LLMClient interface.
+"""Client for any OpenAI-compatible chat completions API.
 
-All OpenRouter / OpenAI-SDK specifics are contained in this module.
+Provider specifics (base URL, model id) are supplied by the caller — see
+``factory.py`` — so the same class backs GitHub Models, OpenRouter, and any
+other OpenAI-compatible endpoint without subclassing.
 """
 
 from __future__ import annotations
@@ -12,15 +14,12 @@ from openai import OpenAI
 
 from app.llm.base import LLMClient
 
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-#DEFAULT_MODEL = "qwen/qwen2.5-vl-72b-instruct:free"
-DEFAULT_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
 
-class OpenRouterClient(LLMClient):
-    """LLMClient backed by OpenRouter's OpenAI-compatible API."""
+class OpenAICompatibleClient(LLMClient):
+    """LLMClient backed by any OpenAI-compatible chat completions endpoint."""
 
-    def __init__(self, api_key: str, model: str = DEFAULT_MODEL) -> None:
-        self._client = OpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key)
+    def __init__(self, base_url: str, api_key: str, model: str) -> None:
+        self._client = OpenAI(base_url=base_url, api_key=api_key)
         self._model = model
 
     def generate(self, prompt: str, image: str | None = None) -> str:

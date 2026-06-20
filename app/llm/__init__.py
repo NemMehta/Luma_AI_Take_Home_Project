@@ -1,12 +1,13 @@
 """Provider-neutral LLM client package.
 
-Public surface: the abstract ``LLMClient`` interface, the ``OpenRouterClient``
-implementation, and the ``get_llm_client`` factory. Add new providers as sibling
-modules next to ``openrouter.py`` without changing the interface or callers.
+Public surface: the abstract ``LLMClient`` interface, the
+``OpenAICompatibleClient`` implementation, and the ``get_llm_client`` factory.
+Add a provider via config in ``factory.py`` (same client) or a new sibling
+module for a genuinely different API — without changing the interface or callers.
 """
 
 from app.llm.base import LLMClient
 from app.llm.factory import get_llm_client
-from app.llm.openrouter import OpenRouterClient
+from app.llm.openai_compatible import OpenAICompatibleClient
 
-__all__ = ["LLMClient", "OpenRouterClient", "get_llm_client"]
+__all__ = ["LLMClient", "OpenAICompatibleClient", "get_llm_client"]
