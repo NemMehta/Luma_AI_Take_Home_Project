@@ -1,0 +1,68 @@
+{
+  "manifest": "harness/corpus/manifest.json",
+  "accuracy": 1.0,
+  "correct": 4,
+  "classified": 4,
+  "total_failing": 4,
+  "confusion_matrix": {
+    "flaky_timing": {
+      "flaky_timing": 1,
+      "network_failure": 0,
+      "real_bug": 0,
+      "stale_selector": 0
+    },
+    "network_failure": {
+      "flaky_timing": 0,
+      "network_failure": 1,
+      "real_bug": 0,
+      "stale_selector": 0
+    },
+    "real_bug": {
+      "flaky_timing": 0,
+      "network_failure": 0,
+      "real_bug": 1,
+      "stale_selector": 0
+    },
+    "stale_selector": {
+      "flaky_timing": 0,
+      "network_failure": 0,
+      "real_bug": 0,
+      "stale_selector": 1
+    }
+  },
+  "predictions": [
+    {
+      "file": "stale_selector.zip",
+      "true_label": "stale_selector",
+      "predicted": "stale_selector",
+      "correct": true,
+      "confidence": 0.9,
+      "reasoning": "The failure was due to a timeout while waiting for the locator '#search-box' to fill with the value 'cher'. The DOM snapshot shows that the search box exists but the attempt to interact with it timed out, indicating that it may have changed (e.g., due to being removed or altered in a way that the selector is no longer valid) despite being visible in the snapshot."
+    },
+    {
+      "file": "network_failure.zip",
+      "true_label": "network_failure",
+      "predicted": "network_failure",
+      "correct": true,
+      "confidence": 0.95,
+      "reasoning": "The test failed because the request to load data from 'http://127.0.0.1:5173/api/fruits.json' returned a 503 status code indicating 'Service Unavailable'. The console message confirms this with 'Failed to load resource: the server responded with a status of 503 (Service Unavailable)'. This establishes that the failure is due to a network issue rather than a problem with selectors or timing."
+    },
+    {
+      "file": "real_bug.zip",
+      "true_label": "real_bug",
+      "predicted": "real_bug",
+      "correct": true,
+      "confidence": 0.9,
+      "reasoning": "The test expects 1 element matching 'getByTestId(\"result-item\")' after filtering, but it received 7 elements. The DOM snapshot shows all items (Apple, Apricot, Banana, Grape, Orange, Peach, Pear) are still visible after entering 'cher', indicating the filter did not work correctly, leading to a wrong final state of the application."
+    },
+    {
+      "file": "flaky_timing.zip",
+      "true_label": "flaky_timing",
+      "predicted": "flaky_timing",
+      "correct": true,
+      "confidence": 0.85,
+      "reasoning": "The 'expect(locator).toHaveCount(expected) failed' indicates that the locator found 8 elements instead of the expected 1 after searching for 'cher'. The DOM snapshot shows the search term was applied, but the page had not yet updated to reflect the expected filtered result. This suggests a timing issue where the filtering did not complete in time, leading to an unresolved state despite the locator working correctly. Therefore, waiting longer for the appropriate state would likely resolve the issue."
+    }
+  ],
+  "errors": []
+}

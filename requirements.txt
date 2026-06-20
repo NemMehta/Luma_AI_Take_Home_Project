@@ -2,5 +2,7 @@ openai==2.43.0
 python-dotenv==1.2.2
 fastapi==0.138.0
 uvicorn==0.49.0
+# Required by FastAPI to accept multipart file uploads (POST /diagnose).
+python-multipart==0.0.32
 # Used directly by app/diagnosis (evidence-bundle models); also a fastapi dependency.
 pydantic==2.13.4

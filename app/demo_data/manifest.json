@@ -1,0 +1,35 @@
+{
+  "app": "harness/sut search flow",
+  "categories": [
+    "stale_selector",
+    "network_failure",
+    "real_bug",
+    "flaky_timing"
+  ],
+  "traces": [
+    {
+      "name": "stale_selector",
+      "file": "stale_selector.zip",
+      "label": "stale_selector",
+      "injection": "Test targets the old #search-box id; the box is now #search."
+    },
+    {
+      "name": "network_failure",
+      "file": "network_failure.zip",
+      "label": "network_failure",
+      "injection": "Playwright route fails GET /api/fruits.json (HTTP 503) \u2014 data the app depends on."
+    },
+    {
+      "name": "real_bug",
+      "file": "real_bug.zip",
+      "label": "real_bug",
+      "injection": "?inject=real_bug inverts the filter, so search returns the non-matching fruits."
+    },
+    {
+      "name": "flaky_timing",
+      "file": "flaky_timing.zip",
+      "label": "flaky_timing",
+      "injection": "?inject=flaky paints the search result ~3s late; the test asserts within 1.5s."
+    }
+  ]
+}
