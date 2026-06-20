@@ -5,7 +5,8 @@
   "description": "Phase 1 trace harness — generates passing and failing Playwright traces.",
   "scripts": {
     "test": "playwright test",
-    "traces": "playwright test || true; node collect-traces.mjs"
+    "traces": "playwright test || true; node collect-traces.mjs",
+    "corpus": "playwright test tests/corpus.spec.ts || true; node collect-corpus.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.61.0"

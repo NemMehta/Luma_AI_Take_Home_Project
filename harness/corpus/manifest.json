@@ -1,0 +1,63 @@
+{
+  "app": "harness/sut search flow",
+  "categories": [
+    "stale_selector",
+    "network_failure",
+    "real_bug",
+    "flaky_timing"
+  ],
+  "traces": [
+    {
+      "file": "stale_selector.zip",
+      "label": "stale_selector",
+      "outcome": "fail",
+      "baseline": "stale_selector.baseline.zip",
+      "injection": "Test targets the old #search-box id; the box is now #search."
+    },
+    {
+      "file": "stale_selector.baseline.zip",
+      "label": "passing",
+      "outcome": "pass",
+      "baseline": null
+    },
+    {
+      "file": "network_failure.zip",
+      "label": "network_failure",
+      "outcome": "fail",
+      "baseline": "network_failure.baseline.zip",
+      "injection": "Playwright route fails GET /api/fruits.json (HTTP 503) — data the app depends on."
+    },
+    {
+      "file": "network_failure.baseline.zip",
+      "label": "passing",
+      "outcome": "pass",
+      "baseline": null
+    },
+    {
+      "file": "real_bug.zip",
+      "label": "real_bug",
+      "outcome": "fail",
+      "baseline": "real_bug.baseline.zip",
+      "injection": "?inject=real_bug inverts the filter, so search returns the non-matching fruits."
+    },
+    {
+      "file": "real_bug.baseline.zip",
+      "label": "passing",
+      "outcome": "pass",
+      "baseline": null
+    },
+    {
+      "file": "flaky_timing.zip",
+      "label": "flaky_timing",
+      "outcome": "fail",
+      "baseline": "flaky_timing.baseline.zip",
+      "injection": "?inject=flaky paints the search result ~3s late; the test asserts within 1.5s."
+    },
+    {
+      "file": "flaky_timing.baseline.zip",
+      "label": "passing",
+      "outcome": "pass",
+      "baseline": null
+    }
+  ]
+}
