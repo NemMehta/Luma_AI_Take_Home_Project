@@ -17,6 +17,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.staticfiles import StaticFiles
 
 from app.diagnosis.classifier import classify_trace
 
@@ -95,3 +96,12 @@ def benchmark() -> dict:
         "total_failing": results.get("total_failing"),
         "confusion_matrix": results.get("confusion_matrix"),
     }
+
+
+# Serve the built React frontend (web/dist) as static files when it exists, so the
+# whole thing runs as one service in production. Mounted AFTER all API routes, so
+# /diagnose, /corpus and /benchmark still resolve to the API. In dev there is no
+# build, so this is skipped and Vite serves the UI (proxying the API).
+_FRONTEND_DIST = Path(__file__).parent.parent / "web" / "dist"
+if _FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=_FRONTEND_DIST, html=True), name="frontend")
