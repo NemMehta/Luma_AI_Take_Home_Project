@@ -11,8 +11,13 @@ import os
 from app.llm.base import LLMClient
 from app.llm.openai_compatible import OpenAICompatibleClient
 
-# GitHub Models (primary). gpt-4o-mini on purpose: enough for the vision spike
-# and early iteration without burning the small gpt-4o free allowance.
+# OpenAI (preferred when OPENAI_API_KEY is set — e.g. a reviewer's own key).
+# gpt-4o is vision-capable.
+OPENAI_BASE_URL = "https://api.openai.com/v1"
+OPENAI_MODEL = "gpt-4o"
+
+# GitHub Models. gpt-4o-mini on purpose: enough for the vision spike and early
+# iteration without burning the small gpt-4o free allowance.
 GITHUB_MODELS_BASE_URL = "https://models.github.ai/inference"
 GITHUB_MODELS_MODEL = "openai/gpt-4o-mini"
 
@@ -21,27 +26,43 @@ OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 OPENROUTER_MODEL = "nvidia/nemotron-nano-12b-v2-vl:free"
 
 
-def get_llm_client() -> LLMClient:
-    """Return a client for the first provider whose key is present.
+def _is_real(value: str | None) -> bool:
+    """A key counts only if it is non-empty and not an obvious xxxxx placeholder.
 
-    Order: GitHub Models (GITHUB_TOKEN), then OpenRouter (OPENROUTER_API_KEY).
+    Catches the .env.example stubs (sk-xxxxx, sk-ant-xxxxx, ghp_xxxxx, xxxxx). No
+    length/prefix checks — those could wrongly reject a real key later.
+    """
+    value = (value or "").strip()
+    return bool(value) and "xxxxx" not in value
+
+
+def get_llm_client() -> LLMClient:
+    """Return a client for the first provider with a real (non-placeholder) key.
+
+    Order: OpenAI (OPENAI_API_KEY), GitHub Models (GITHUB_TOKEN), then OpenRouter
+    (OPENROUTER_API_KEY). OpenAI is checked first so a reviewer's real key wins
+    even if a stub GITHUB_TOKEN is still in the environment.
     Add a provider by checking its key here and returning a configured client.
     """
-    if os.environ.get("GITHUB_TOKEN"):
+    openai_key = os.environ.get("OPENAI_API_KEY")
+    if _is_real(openai_key):
         return OpenAICompatibleClient(
-            base_url=GITHUB_MODELS_BASE_URL,
-            api_key=os.environ["GITHUB_TOKEN"],
-            model=GITHUB_MODELS_MODEL,
+            base_url=OPENAI_BASE_URL, api_key=openai_key, model=OPENAI_MODEL
         )
 
-    if os.environ.get("OPENROUTER_API_KEY"):
+    github_token = os.environ.get("GITHUB_TOKEN")
+    if _is_real(github_token):
         return OpenAICompatibleClient(
-            base_url=OPENROUTER_BASE_URL,
-            api_key=os.environ["OPENROUTER_API_KEY"],
-            model=OPENROUTER_MODEL,
+            base_url=GITHUB_MODELS_BASE_URL, api_key=github_token, model=GITHUB_MODELS_MODEL
+        )
+
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY")
+    if _is_real(openrouter_key):
+        return OpenAICompatibleClient(
+            base_url=OPENROUTER_BASE_URL, api_key=openrouter_key, model=OPENROUTER_MODEL
         )
 
     raise RuntimeError(
-        "No LLM provider key found. Set GITHUB_TOKEN or OPENROUTER_API_KEY "
-        "(e.g. in your .env)."
+        "No LLM provider key found. Set OPENAI_API_KEY, GITHUB_TOKEN, or "
+        "OPENROUTER_API_KEY (e.g. in your .env)."
     )

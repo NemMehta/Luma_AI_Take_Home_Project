@@ -1,0 +1,11 @@
+services:
+  flakylens:
+    build: .
+    image: flakylens
+    ports:
+      - "8000:8000"
+    # Provider keys come from your local .env at runtime — never baked into the
+    # image. Compose injects them as real env vars; load_dotenv() then no-ops
+    # inside the container (there is no .env file there).
+    env_file:
+      - .env

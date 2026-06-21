@@ -1,0 +1,32 @@
+# Git / docker meta
+.git
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Secrets & local env — never copied into the image
+.env
+.env.local
+.take-home-token
+
+# Python local
+.venv
+**/__pycache__
+**/*.pyc
+
+# Node / build artifacts (the frontend is rebuilt in the build stage)
+**/node_modules
+web/dist
+
+# Harness dev workspace (not used at runtime)
+harness/test-results
+harness/playwright-report
+harness/blob-report
+harness/benchmark_results.json
+
+# Editor / OS / scratch
+.DS_Store
+.claude
+NOTES.md
+*.log
