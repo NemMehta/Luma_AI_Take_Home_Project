@@ -39,9 +39,15 @@ def _load_manifest() -> dict:
         raise HTTPException(status_code=500, detail="demo corpus manifest is missing")
 
 
-def _classify_or_502(zip_path: str):
-    """Run the classifier, turning a provider auth rejection (401/403 — bad/invalid
-    key) into a clean 502 instead of a raw 500. Other errors propagate unchanged."""
+def _classify_or_error(zip_path: str):
+    """Run the classifier, turning provider HTTP errors into clean responses
+    instead of raw 500s:
+
+      - 401/403 (bad/invalid key) -> 502
+      - 429 (rate limited)        -> 503, retry shortly
+
+    Other errors propagate unchanged.
+    """
     try:
         return classify_trace(zip_path)
     except APIStatusError as exc:
@@ -49,6 +55,11 @@ def _classify_or_502(zip_path: str):
             raise HTTPException(
                 status_code=502,
                 detail="configured LLM provider rejected the request — check the API key.",
+            ) from exc
+        if exc.status_code == 429:
+            raise HTTPException(
+                status_code=503,
+                detail="the LLM provider is rate limited, please try again shortly.",
             ) from exc
         raise
 
@@ -67,7 +78,7 @@ def diagnose(file: UploadFile = File(...)):
             fh.write(file.file.read())
         if not zipfile.is_zipfile(tmp):
             raise HTTPException(status_code=400, detail="uploaded file is not a valid trace.zip")
-        return _classify_or_502(tmp)
+        return _classify_or_error(tmp)
     finally:
         with suppress(OSError):
             os.remove(tmp)
@@ -93,7 +104,7 @@ def diagnose_corpus(name: str) -> dict:
     return {
         "name": name,
         "true_label": entry.get("label"),
-        "diagnosis": _classify_or_502(str(zip_path)),
+        "diagnosis": _classify_or_error(str(zip_path)),
     }
 
 
