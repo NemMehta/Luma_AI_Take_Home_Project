@@ -10,7 +10,9 @@ async function toError(res) {
   } catch {
     /* non-JSON error body — keep the status line */
   }
-  return new Error(detail);
+  const err = new Error(detail);
+  err.status = res.status; // expose HTTP status so callers can branch (e.g. 422 vs 5xx)
+  return err;
 }
 
 export async function getCorpus() {

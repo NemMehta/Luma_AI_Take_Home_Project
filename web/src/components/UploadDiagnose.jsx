@@ -5,7 +5,7 @@ import DiagnosisCard from './DiagnosisCard.jsx';
 
 export default function UploadDiagnose() {
   const [file, setFile] = useState(null);
-  const [status, setStatus] = useState('idle'); // idle | analyzing | done | error
+  const [status, setStatus] = useState('idle'); // idle | analyzing | done | rejected | error
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
@@ -29,7 +29,9 @@ export default function UploadDiagnose() {
       setStatus('done');
     } catch (e) {
       setError(e.message);
-      setStatus('error');
+      // 422 = the file itself is bad -> 'rejected' (dead end). 5xx / network
+      // error -> 'error' (transient): the file may be fine, allow a retry.
+      setStatus(e.status === 422 ? 'rejected' : 'error');
     }
   }
 
@@ -54,7 +56,11 @@ export default function UploadDiagnose() {
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <button
           onClick={run}
-          disabled={!file || status === 'analyzing'}
+          // A rejected (422) file is a dead end: stay disabled while it shows.
+          // pick() resets status to 'idle' on a new file, which re-enables.
+          // A transient 'error' (5xx / network) keeps the button enabled so the
+          // same file can be retried.
+          disabled={!file || status === 'analyzing' || status === 'rejected'}
           className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           {status === 'analyzing' ? 'Analyzing…' : 'Diagnose'}
@@ -68,17 +74,33 @@ export default function UploadDiagnose() {
         waiting a little longer would have fixed it.
       </p>
 
-      {/* Rejection / error state. Deliberately NOT a DiagnosisCard: no category
-          pill, no confidence bar — so a boundary rejection (e.g. uploading a
-          non-trace zip) can never be mistaken for a red-tinted real_bug result. */}
-      {status === 'error' && (
+      {/* Rejected (HTTP 422): the file itself is bad — a dead end. Deliberately
+          NOT a DiagnosisCard (no category pill, no confidence bar), so a boundary
+          rejection can never be mistaken for a red-tinted real_bug result. The
+          Diagnose button stays disabled until a different file is picked. */}
+      {status === 'rejected' && (
         <div className="mt-4 rounded-lg border border-rose-300 bg-rose-50 p-4">
           <div className="flex items-center gap-2">
             <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-200 text-xs font-bold text-rose-700">!</span>
             <p className="text-sm font-semibold text-rose-800">Couldn’t diagnose this upload</p>
           </div>
           <p className="mt-2 text-sm leading-relaxed text-rose-700">{error}</p>
-          <p className="mt-2 text-xs text-rose-500">No category or confidence is shown — nothing was diagnosed.</p>
+          <p className="mt-2 text-xs font-medium text-rose-600">No diagnosis was run. Replace the file to try again.</p>
+        </div>
+      )}
+
+      {/* Transient error (5xx / network): the file may be fine, so this is NOT a
+          dead end — the Diagnose button stays enabled to retry the same file.
+          Also not a DiagnosisCard. Amber (not rose) to read as "try again", not
+          "your file is bad". */}
+      {status === 'error' && (
+        <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
+          <div className="flex items-center gap-2">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200 text-xs font-bold text-amber-800">!</span>
+            <p className="text-sm font-semibold text-amber-900">Couldn’t reach the diagnosis service</p>
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-amber-800">{error}</p>
+          <p className="mt-2 text-xs font-medium text-amber-700">This looks temporary — press Diagnose to try the same file again.</p>
         </div>
       )}
       {status === 'done' && result && <div className="mt-4"><DiagnosisCard diagnosis={result} /></div>}
