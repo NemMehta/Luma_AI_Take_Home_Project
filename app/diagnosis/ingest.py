@@ -33,6 +33,19 @@ _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 _SNAPSHOT_CAP = 4000
 
 
+class NotATraceError(ValueError):
+    """The file opened as a zip but carries no Playwright trace event stream
+    (no ``test.trace`` / ``N-trace.trace``), so it is not a Playwright trace.zip
+    — e.g. a zip of PDFs. Raised early, before any evidence is extracted."""
+
+
+# Status returned by the evidence-sufficiency guard below. NOT a diagnosis
+# category: it is deliberately kept out of DiagnosisCategory and the benchmark
+# labels. It only tells the upload boundary to reject before the LLM is called.
+INSUFFICIENT_EVIDENCE = "insufficient_evidence"
+SUFFICIENT = "sufficient"
+
+
 def _strip_ansi(text):
     return _ANSI.sub("", text) if isinstance(text, str) else text
 
@@ -272,8 +285,24 @@ def _extract_screenshot(lib_events, zip_names):
 
 def build_evidence_bundle(zip_path) -> EvidenceBundle:
     path = str(zip_path)
+    # zipfile.ZipFile raises zipfile.BadZipFile here for a non-zip / corrupt
+    # upload; we let it propagate so the caller can reject it cleanly rather
+    # than building evidence from garbage.
     with zipfile.ZipFile(path) as zf:
         names = set(zf.namelist())
+
+        # Validate this is actually a Playwright trace BEFORE extracting. A real
+        # trace.zip always carries at least one trace event stream — test.trace
+        # and/or N-trace.trace — and those *.trace files are exactly what we read
+        # below to recover actions/failure/console (see action_source). If none
+        # is present, the archive is not a Playwright trace, so reject it instead
+        # of emitting an empty bundle that would force the classifier to guess.
+        if not any(n.endswith(".trace") for n in names):
+            raise NotATraceError(
+                "archive has no Playwright trace event stream "
+                "(expected test.trace or an N-trace.trace)"
+            )
+
         test_events = _read_ndjson(zf, "test.trace")
 
         lib_events = []
@@ -301,6 +330,44 @@ def build_evidence_bundle(zip_path) -> EvidenceBundle:
             dom_snapshot=_extract_dom_snapshot(action_source, zf),
             screenshot=_extract_screenshot(lib_events, names),
         )
+
+
+def _has_text(value) -> bool:
+    """True only if a string field is present AND non-blank.
+
+    Matches how the extractor leaves text fields: usually ``None`` when absent,
+    but sometimes an empty/whitespace string (e.g. a DomSnapshot whose page
+    snapshot section came back empty — see _extract_dom_snapshot). Both count as
+    "no text".
+    """
+    return bool(value) and bool(str(value).strip())
+
+
+def evidence_sufficiency(bundle: EvidenceBundle) -> str:
+    """Gate, run right after extraction, that decides whether a bundle is worth
+    sending to the LLM. Returns ``INSUFFICIENT_EVIDENCE`` or ``SUFFICIENT``.
+
+    Insufficient means the bundle carries no usable signal AT ALL — ALL FOUR of
+    these are empty (note the field types, matched exactly):
+
+      - error context   ``failure``      -> None when absent
+      - DOM snapshot     ``dom_snapshot`` -> None, or an object with empty ``.text``
+      - actions          ``actions``      -> [] when absent (list, never None)
+      - network entries  ``network``      -> [] when absent (list, never None)
+
+    The check is an AND across all four on purpose: a perfectly valid trace may
+    legitimately lack any one of them (a passing trace has no ``failure``; a
+    UI-only test makes no network requests), so any single present signal makes
+    the bundle sufficient. Only total emptiness — what a non-trace archive
+    produces — is rejected.
+    """
+    has_error_context = bundle.failure is not None
+    has_dom_snapshot = bundle.dom_snapshot is not None and _has_text(bundle.dom_snapshot.text)
+    has_actions = bool(bundle.actions)      # list[Action]; [] when none
+    has_network = bool(bundle.network)      # list[NetworkRequest]; [] when none
+    if has_error_context or has_dom_snapshot or has_actions or has_network:
+        return SUFFICIENT
+    return INSUFFICIENT_EVIDENCE
 
 
 def main(argv=None):

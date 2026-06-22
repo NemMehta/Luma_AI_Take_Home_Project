@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { diagnoseUpload } from '../api.js';
-import { Section, Spinner, ErrorBanner } from './ui.jsx';
+import { Section, Spinner } from './ui.jsx';
 import DiagnosisCard from './DiagnosisCard.jsx';
 
 export default function UploadDiagnose() {
@@ -68,7 +68,19 @@ export default function UploadDiagnose() {
         waiting a little longer would have fixed it.
       </p>
 
-      {status === 'error' && <div className="mt-4"><ErrorBanner message={error} /></div>}
+      {/* Rejection / error state. Deliberately NOT a DiagnosisCard: no category
+          pill, no confidence bar — so a boundary rejection (e.g. uploading a
+          non-trace zip) can never be mistaken for a red-tinted real_bug result. */}
+      {status === 'error' && (
+        <div className="mt-4 rounded-lg border border-rose-300 bg-rose-50 p-4">
+          <div className="flex items-center gap-2">
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-200 text-xs font-bold text-rose-700">!</span>
+            <p className="text-sm font-semibold text-rose-800">Couldn’t diagnose this upload</p>
+          </div>
+          <p className="mt-2 text-sm leading-relaxed text-rose-700">{error}</p>
+          <p className="mt-2 text-xs text-rose-500">No category or confidence is shown — nothing was diagnosed.</p>
+        </div>
+      )}
       {status === 'done' && result && <div className="mt-4"><DiagnosisCard diagnosis={result} /></div>}
     </Section>
   );

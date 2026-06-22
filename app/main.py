@@ -20,9 +20,22 @@ from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
 from openai import APIStatusError
 
-from app.diagnosis.classifier import classify_trace
+from app.diagnosis.classifier import InsufficientEvidenceError, classify_trace
+from app.diagnosis.ingest import NotATraceError
 
 load_dotenv()  # app entry point: load the provider key from .env at startup
+
+# Two distinct boundary-rejection messages (see POST /diagnose). Both surface as
+# 422s the UI renders as an error, never as a diagnosis card.
+_NOT_A_TRACE_MESSAGE = (
+    "This does not look like a Playwright trace archive. A trace.zip contains "
+    "Playwright trace event files, and this one does not."
+)
+_INSUFFICIENT_EVIDENCE_MESSAGE = (
+    "This looks like a trace archive, but I could not pull enough usable "
+    "evidence from it — no error context, DOM snapshot, actions, or network "
+    "entries."
+)
 
 DEMO_DATA = Path(__file__).parent / "demo_data"
 MANIFEST_PATH = DEMO_DATA / "manifest.json"
@@ -71,14 +84,24 @@ def health() -> dict[str, str]:
 
 @app.post("/diagnose")
 def diagnose(file: UploadFile = File(...)):
-    """Diagnose an uploaded trace.zip and return the structured diagnosis."""
+    """Diagnose an uploaded trace.zip and return the structured diagnosis.
+
+    Rejects bad uploads at the boundary (422) instead of forcing the classifier
+    to guess. Two cases, never reaching the LLM:
+      - not a trace: a corrupt/non-zip file (BadZipFile) or a zip with no trace
+        streams (NotATraceError).
+      - insufficient evidence: a real trace archive that yields nothing usable.
+    """
     fd, tmp = tempfile.mkstemp(suffix=".zip", prefix="upload_")
     try:
         with os.fdopen(fd, "wb") as fh:
             fh.write(file.file.read())
-        if not zipfile.is_zipfile(tmp):
-            raise HTTPException(status_code=400, detail="uploaded file is not a valid trace.zip")
-        return _classify_or_error(tmp)
+        try:
+            return _classify_or_error(tmp)
+        except (NotATraceError, zipfile.BadZipFile) as exc:
+            raise HTTPException(status_code=422, detail=_NOT_A_TRACE_MESSAGE) from exc
+        except InsufficientEvidenceError as exc:
+            raise HTTPException(status_code=422, detail=_INSUFFICIENT_EVIDENCE_MESSAGE) from exc
     finally:
         with suppress(OSError):
             os.remove(tmp)

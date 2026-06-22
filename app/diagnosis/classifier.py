@@ -20,9 +20,19 @@ from enum import Enum
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 
-from app.diagnosis.ingest import build_evidence_bundle
+from app.diagnosis.ingest import (
+    INSUFFICIENT_EVIDENCE,
+    build_evidence_bundle,
+    evidence_sufficiency,
+)
 from app.diagnosis.schema import EvidenceBundle
 from app.llm import get_llm_client
+
+
+class InsufficientEvidenceError(ValueError):
+    """A valid-looking trace archive yielded no usable evidence (no error
+    context, DOM snapshot, actions, or network entries), so there is nothing to
+    diagnose and we refuse to make the LLM guess. NOT a diagnosis category."""
 
 
 class DiagnosisCategory(str, Enum):
@@ -164,7 +174,15 @@ def classify(bundle: EvidenceBundle, screenshot_path: str | None = None) -> Diag
 
 
 def classify_trace(zip_path: str) -> DiagnosisResult:
-    bundle = build_evidence_bundle(zip_path)
+    bundle = build_evidence_bundle(zip_path)  # raises NotATraceError / BadZipFile
+    # Evidence-sufficiency guard, right after extraction: never force the
+    # classifier to pick a category from an empty bundle. Real traces (corpus
+    # included) carry actions/network, so they sail through unchanged.
+    if evidence_sufficiency(bundle) == INSUFFICIENT_EVIDENCE:
+        raise InsufficientEvidenceError(
+            "trace yielded no usable evidence: no error context, DOM snapshot, "
+            "actions, or network entries"
+        )
     with _screenshot_tempfile(zip_path, bundle) as screenshot_path:
         return classify(bundle, screenshot_path)
 
