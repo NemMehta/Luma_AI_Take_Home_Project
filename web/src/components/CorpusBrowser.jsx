@@ -59,7 +59,7 @@ export default function CorpusBrowser({ onCorpusLoaded, onCorpusResult }) {
             <button
               onClick={runAll}
               disabled={running}
-              className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="btn-primary rounded-md px-4 py-2 text-sm font-medium transition"
             >
               {buttonLabel}
             </button>
@@ -71,29 +71,35 @@ export default function CorpusBrowser({ onCorpusLoaded, onCorpusResult }) {
               const actual = row.result?.true_label ?? t.label;
               const correct = diag && diag.category === actual;
               return (
-                <li key={t.name} className="rounded-lg border border-slate-200 p-4">
+                <li key={t.name} className="rounded-lg border border-hair p-4">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-sm font-medium text-slate-800">{t.name}</span>
-                    <span className="text-xs text-slate-400">known cause</span>
+                    <span className="font-mono text-sm font-medium text-ink">{t.name}</span>
+                    <span className="text-xs text-muted">known cause</span>
                     <CategoryBadge category={t.label} />
                   </div>
-                  {t.injection && <p className="mt-2 text-xs text-slate-500">{t.injection}</p>}
+                  {t.injection && <p className="mt-2 text-xs text-muted">{t.injection}</p>}
 
                   {row.status === 'analyzing' && <div className="mt-3"><Spinner label="Calling the model…" /></div>}
                   {row.status === 'error' && <div className="mt-3"><ErrorBanner message={row.error} /></div>}
                   {row.status === 'done' && diag && (
-                    <div className="mt-3 rounded-md bg-slate-50 p-3">
+                    <div
+                      className="reveal glow mt-3 rounded-md bg-surface-2 p-3"
+                      style={{ '--glow': `var(--color-${actual})` }}
+                    >
                       <div className="flex flex-wrap items-center gap-2 text-sm">
-                        <span className="text-slate-500">model's guess</span>
+                        <span className="text-muted">model's guess</span>
                         <CategoryBadge category={diag.category} />
-                        <span className="text-slate-400">vs known cause</span>
+                        <span className="text-muted">vs known cause</span>
                         <CategoryBadge category={actual} />
-                        <span className={`ml-auto font-semibold ${correct ? 'text-emerald-600' : 'text-rose-600'}`}>
+                        <span
+                          className={`ml-auto font-medium ${correct ? '' : 'text-muted'}`}
+                          style={correct ? { color: `var(--color-${actual})` } : undefined}
+                        >
                           {correct ? '✓ correct' : '✗ wrong'}
                         </span>
                       </div>
-                      <div className="mt-3"><ConfidenceBar confidence={diag.confidence} /></div>
-                      <p className="mt-3 text-sm leading-relaxed text-slate-700">{diag.reasoning}</p>
+                      <div className="mt-3"><ConfidenceBar confidence={diag.confidence} category={diag.category} /></div>
+                      <p className="mt-3 text-sm leading-relaxed text-ink">{diag.reasoning}</p>
                     </div>
                   )}
                 </li>

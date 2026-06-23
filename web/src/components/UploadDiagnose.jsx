@@ -42,14 +42,14 @@ export default function UploadDiagnose() {
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => { e.preventDefault(); setDragOver(false); pick(e.dataTransfer.files?.[0]); }}
-        className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-8 text-center transition ${dragOver ? 'border-violet-400 bg-violet-50' : 'border-slate-300 bg-slate-50 hover:border-slate-400'
+        className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-8 text-center transition ${dragOver ? 'border-accent bg-accent/10' : 'border-hair bg-surface-2 hover:border-muted'
           }`}
       >
         <input ref={inputRef} type="file" accept=".zip" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
-        <p className="text-sm font-medium text-slate-700">
+        <p className="text-sm font-medium text-ink">
           {file ? file.name : 'Drop a trace.zip here, or click to choose'}
         </p>
-        <p className="mt-1 text-xs text-slate-400">Playwright trace archive (.zip)</p>
+        <p className="mt-1 text-xs text-muted">Playwright trace archive (.zip)</p>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -60,16 +60,16 @@ export default function UploadDiagnose() {
           // A transient 'error' (5xx / network) keeps the button enabled so the
           // same file can be retried.
           disabled={!file || status === 'analyzing' || status === 'rejected'}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="btn-primary rounded-md px-4 py-2 text-sm font-medium transition"
         >
           {status === 'analyzing' ? 'Analyzing…' : 'Diagnose'}
         </button>
         {status === 'analyzing' && <Spinner label="Analyzing trace — this calls the model and takes a few seconds." />}
       </div>
 
-      <p className="mt-3 text-xs text-slate-400">
+      <p className="mt-3 text-xs text-muted">
         Heads-up: a timing failure can sometimes read as{' '}
-        <span className="font-medium text-slate-500">real_bug</span> — a single trace doesn't always show whether
+        <span className="font-medium text-ink">real_bug</span> — a single trace doesn't always show whether
         waiting a little longer would have fixed it.
       </p>
 
@@ -78,15 +78,15 @@ export default function UploadDiagnose() {
           rejection can never be mistaken for a red-tinted real_bug result. The
           Diagnose button stays disabled until a different file is picked. */}
       {status === 'rejected' && (
-        <div className="mt-4 rounded-lg border border-rose-300 bg-rose-50 p-4">
+        <div className="mt-4 rounded-lg border border-danger/30 bg-danger/10 p-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-rose-200 text-xs font-bold text-rose-700">!</span>
-            <p className="text-sm font-semibold text-rose-800">Couldn’t diagnose this upload</p>
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-danger/20 text-xs font-medium text-danger">!</span>
+            <p className="text-sm font-medium text-danger">Couldn’t diagnose this upload</p>
           </div>
-          <p className="mt-2 text-sm leading-relaxed text-rose-700">{error}</p>
+          <p className="mt-2 text-sm leading-relaxed text-danger">{error}</p>
           <button
             onClick={() => inputRef.current?.click()}
-            className="mt-3 rounded-md border border-rose-300 px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
+            className="mt-3 rounded-md border border-danger/40 px-3 py-1.5 text-sm font-medium text-danger transition hover:bg-danger/10"
           >
             Choose a different file
           </button>
@@ -98,16 +98,16 @@ export default function UploadDiagnose() {
           Also not a DiagnosisCard. Amber (not rose) to read as "try again", not
           "your file is bad". */}
       {status === 'error' && (
-        <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
+        <div className="mt-4 rounded-lg border border-warn/30 bg-warn/10 p-4">
           <div className="flex items-center gap-2">
-            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-200 text-xs font-bold text-amber-800">!</span>
-            <p className="text-sm font-semibold text-amber-900">Couldn’t reach the diagnosis service</p>
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-warn/20 text-xs font-medium text-warn">!</span>
+            <p className="text-sm font-medium text-warn">Couldn’t reach the diagnosis service</p>
           </div>
-          <p className="mt-2 text-sm leading-relaxed text-amber-800">{error}</p>
-          <p className="mt-2 text-xs font-medium text-amber-700">This looks temporary — press Diagnose to try the same file again.</p>
+          <p className="mt-2 text-sm leading-relaxed text-warn">{error}</p>
+          <p className="mt-2 text-xs font-medium text-warn/80">This looks temporary — press Diagnose to try the same file again.</p>
         </div>
       )}
-      {status === 'done' && result && <div className="mt-4"><DiagnosisCard diagnosis={result} /></div>}
+      {status === 'done' && result && <div className="reveal mt-4"><DiagnosisCard diagnosis={result} /></div>}
     </Section>
   );
 }

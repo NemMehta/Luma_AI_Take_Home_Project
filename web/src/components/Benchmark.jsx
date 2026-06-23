@@ -70,51 +70,50 @@ function BenchmarkBody({ data, isLive }) {
   return (
     <div>
       <div className="flex items-baseline gap-3">
-        <span className="text-3xl font-bold text-slate-900">{pct}%</span>
-        <span className="text-sm text-slate-500">accuracy ({data.correct}/{data.classified} correct)</span>
+        <span className="font-mono text-3xl font-medium text-ink">{pct}%</span>
+        <span className="text-sm text-muted">accuracy ({data.correct}/{data.classified} correct)</span>
       </div>
-      <p className="mt-1 text-xs text-slate-400">
+      <p className="mt-1 text-xs text-muted">
         {isLive
           ? 'Recomputed live from your corpus diagnoses this session. The model is non-deterministic, so this may differ from the committed baseline.'
           : 'Showing the committed benchmark, a saved run across all labeled samples kept stable for reproducibility. Diagnose all corpus samples in section 02 to recompute this live from fresh predictions.'}
       </p>
 
-      <p className="mt-5 text-xs text-slate-500">
+      <p className="mt-5 text-xs text-muted">
         How to read this: each row is the true label, each column is the model's guess. Cells on the diagonal are
         correct; anything off the diagonal is the model mixing up one category for another.
       </p>
 
-      <div className="mt-3 overflow-x-auto">
-        <table className="border-collapse text-sm">
+      <div className="mt-3">
+        <table className="w-full table-fixed border-collapse text-[11px]">
           <thead>
             <tr>
-              <th className="px-3 py-2 text-left text-xs font-medium text-slate-400">true \ predicted</th>
+              <th className="px-2 py-1.5 text-left align-bottom text-[11px] font-medium text-muted [overflow-wrap:anywhere]">true \ predicted</th>
               {cols.map((c) => (
-                <th key={c} className="px-3 py-2 text-left font-mono text-xs text-slate-500">{c}</th>
+                <th key={c} className="px-2 py-1.5 text-left align-bottom font-mono text-[11px] text-muted [overflow-wrap:anywhere]">{c}</th>
               ))}
             </tr>
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r} className="border-t border-slate-100">
-                <td className="px-3 py-2 font-mono text-xs text-slate-600">{r}</td>
+              <tr key={r} className="border-t border-hair">
+                <td className="px-2 py-1.5 font-mono text-[11px] text-muted [overflow-wrap:anywhere]">{r}</td>
                 {cols.map((c) => {
                   const v = matrix[r]?.[c] ?? 0;
                   const diagonal = r === c;
-                  return (
-                    <td
-                      key={c}
-                      className={`px-3 py-2 text-center tabular-nums ${
-                        v === 0
-                          ? 'text-slate-300'
-                          : diagonal
-                            ? 'font-semibold text-emerald-700'
-                            : 'font-semibold text-rose-600'
-                      }`}
-                    >
-                      {v}
-                    </td>
-                  );
+                  const base = 'px-2 py-1.5 text-center font-mono text-xs tabular-nums';
+                  if (v === 0) {
+                    return <td key={c} className={`${base} text-faint`}>{v}</td>;
+                  }
+                  if (diagonal) {
+                    // winning cells glow in the row's category color
+                    return (
+                      <td key={c} className={`${base} cell-correct font-medium`} style={{ '--glow': `var(--color-${r})` }}>
+                        {v}
+                      </td>
+                    );
+                  }
+                  return <td key={c} className={`${base} font-medium text-ink`}>{v}</td>;
                 })}
               </tr>
             ))}
@@ -122,9 +121,9 @@ function BenchmarkBody({ data, isLive }) {
         </table>
       </div>
 
-      <div className="mt-5 rounded-md border-l-4 border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-slate-600">
-        Worth knowing: <span className="font-medium text-slate-700">flaky_timing</span> and{' '}
-        <span className="font-medium text-slate-700">real_bug</span> can land differently from one run to the next. A
+      <div className="mt-5 rounded-md border-l-4 border-warn/60 bg-warn/10 px-4 py-3 text-sm leading-relaxed text-muted">
+        Worth knowing: <span className="font-medium text-ink">flaky_timing</span> and{' '}
+        <span className="font-medium text-ink">real_bug</span> can land differently from one run to the next. A
         single trace only captures the moment the test failed — it doesn't show whether waiting a little longer would
         have fixed it — so the model is making a judgment call right at that boundary. Re-run the corpus and you may see
         that one cell drift off the diagonal.
