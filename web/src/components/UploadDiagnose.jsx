@@ -64,12 +64,12 @@ export default function UploadDiagnose() {
         >
           {status === 'analyzing' ? 'Analyzing…' : 'Diagnose'}
         </button>
-        {status === 'analyzing' && <Spinner label="Analyzing trace — this calls the model and takes a few seconds." />}
+        {status === 'analyzing' && <Spinner label="Analyzing trace. This calls the model and takes a few seconds." />}
       </div>
 
       <p className="mt-3 text-xs text-muted">
         Heads-up: a timing failure can sometimes read as{' '}
-        <span className="font-medium text-ink">real_bug</span> — a single trace doesn't always show whether
+        <span className="font-medium text-ink">real_bug</span>. A single trace doesn't always show whether
         waiting a little longer would have fixed it.
       </p>
 
@@ -104,7 +104,7 @@ export default function UploadDiagnose() {
             <p className="text-sm font-medium text-warn">Couldn’t reach the diagnosis service</p>
           </div>
           <p className="mt-2 text-sm leading-relaxed text-warn">{error}</p>
-          <p className="mt-2 text-xs font-medium text-warn/80">This looks temporary — press Diagnose to try the same file again.</p>
+          <p className="mt-2 text-xs font-medium text-warn/80">This looks temporary. Press Diagnose to try the same file again.</p>
         </div>
       )}
       {status === 'done' && result && <div className="reveal mt-4"><DiagnosisCard diagnosis={result} /></div>}

@@ -124,8 +124,8 @@ function BenchmarkBody({ data, isLive }) {
       <div className="mt-5 rounded-md border-l-4 border-warn/60 bg-warn/10 px-4 py-3 text-sm leading-relaxed text-muted">
         Worth knowing: <span className="font-medium text-ink">flaky_timing</span> and{' '}
         <span className="font-medium text-ink">real_bug</span> can land differently from one run to the next. A
-        single trace only captures the moment the test failed — it doesn't show whether waiting a little longer would
-        have fixed it — so the model is making a judgment call right at that boundary. Re-run the corpus and you may see
+        single trace only captures the moment the test failed. It doesn't show whether waiting a little longer would
+        have fixed it, so the model is making a judgment call right at that boundary. Re-run the corpus and you may see
         that one cell drift off the diagonal.
       </div>
     </div>

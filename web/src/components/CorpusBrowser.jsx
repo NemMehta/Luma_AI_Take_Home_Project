@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { getCorpus, diagnoseCorpus } from '../api.js';
 import { Section, Spinner, ErrorBanner } from './ui.jsx';
-import CategoryBadge from './CategoryBadge.jsx';
+import CategoryName from './CategoryName.jsx';
 import ConfidenceBar from './ConfidenceBar.jsx';
+import { categoryBlurb } from '../categories.js';
 
 export default function CorpusBrowser({ onCorpusLoaded, onCorpusResult }) {
   const [traces, setTraces] = useState([]);
@@ -50,7 +51,7 @@ export default function CorpusBrowser({ onCorpusLoaded, onCorpusResult }) {
       : `Run the model on all ${traces.length} samples`;
 
   return (
-    <Section index="02" title="Try It on Known Bugs" description="Real test failures where we already know the true cause. Run them through the model and see how often its guess matches the answer — a gut-check on how much to trust its diagnosis of your own trace.zip above.">
+    <Section index="02" title="Try It on Known Bugs" description="Real test failures where we already know the true cause. Run them through the model and see how often its guess matches the answer, a gut-check on how much to trust its diagnosis of your own trace.zip above.">
       {load === 'loading' && <Spinner label="Loading samples…" />}
       {load === 'error' && <ErrorBanner message={loadError} />}
       {load === 'loaded' && (
@@ -72,12 +73,9 @@ export default function CorpusBrowser({ onCorpusLoaded, onCorpusResult }) {
               const correct = diag && diag.category === actual;
               return (
                 <li key={t.name} className="rounded-lg border border-hair p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-sm font-medium text-ink">{t.name}</span>
-                    <span className="text-xs text-muted">known cause</span>
-                    <CategoryBadge category={t.label} />
-                  </div>
-                  {t.injection && <p className="mt-2 text-xs text-muted">{t.injection}</p>}
+                  {/* Before diagnosis, show only the plain-English scenario — the category
+                      is revealed inside the result card once the row is diagnosed. */}
+                  {t.injection && <p className="text-xs text-muted">{t.injection}</p>}
 
                   {row.status === 'analyzing' && <div className="mt-3"><Spinner label="Calling the model…" /></div>}
                   {row.status === 'error' && <div className="mt-3"><ErrorBanner message={row.error} /></div>}
@@ -86,11 +84,18 @@ export default function CorpusBrowser({ onCorpusLoaded, onCorpusResult }) {
                       className="reveal glow mt-3 rounded-md bg-surface-2 p-3"
                       style={{ '--glow': `var(--color-${actual})` }}
                     >
-                      <div className="flex flex-wrap items-center gap-2 text-sm">
-                        <span className="text-muted">model's guess</span>
-                        <CategoryBadge category={diag.category} />
-                        <span className="text-muted">vs known cause</span>
-                        <CategoryBadge category={actual} />
+                      <div className="flex gap-2 text-sm">
+                        <span className="w-28 shrink-0 text-muted">Known cause</span>
+                        <div className="min-w-0">
+                          <CategoryName category={actual} />
+                          {categoryBlurb(actual) && (
+                            <p className="mt-0.5 text-xs text-muted">{categoryBlurb(actual)}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2 text-sm">
+                        <span className="w-28 shrink-0 text-muted">Model's guess</span>
+                        <CategoryName category={diag.category} />
                         <span
                           className={`ml-auto font-medium ${correct ? '' : 'text-muted'}`}
                           style={correct ? { color: `var(--color-${actual})` } : undefined}
@@ -99,7 +104,10 @@ export default function CorpusBrowser({ onCorpusLoaded, onCorpusResult }) {
                         </span>
                       </div>
                       <div className="mt-3"><ConfidenceBar confidence={diag.confidence} category={diag.category} /></div>
-                      <p className="mt-3 text-sm leading-relaxed text-ink">{diag.reasoning}</p>
+                      <div className="mt-3">
+                        <p className="mb-1 text-xs text-muted">Reasoning</p>
+                        <p className="text-sm leading-relaxed text-ink">{diag.reasoning}</p>
+                      </div>
                     </div>
                   )}
                 </li>

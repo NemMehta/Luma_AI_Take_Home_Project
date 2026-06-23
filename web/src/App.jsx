@@ -32,8 +32,8 @@ export default function App() {
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
             Upload a Playwright{' '}
             <code className="rounded bg-surface-2 px-1 py-0.5 text-xs text-ink">trace.zip</code> and FlakyLens reads the failure
-            evidence — the failed action, the error, the DOM snapshot, network activity and a screenshot — then diagnoses{' '}
-            <em>why</em> the test failed: a stale selector, a real bug, flaky timing, or a network failure — with its
+            evidence: the failed action, the error, the DOM snapshot, network activity, and a screenshot. Then it diagnoses{' '}
+            <em>why</em> the test failed (a stale selector, a real bug, flaky timing, or a network failure) and gives its
             reasoning and a confidence score.
           </p>
         </div>

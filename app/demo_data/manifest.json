@@ -17,7 +17,7 @@
       "name": "network_failure",
       "file": "network_failure.zip",
       "label": "network_failure",
-      "injection": "Playwright route fails GET /api/fruits.json (HTTP 503) \u2014 data the app depends on."
+      "injection": "Playwright route fails GET /api/fruits.json (HTTP 503), data the app depends on."
     },
     {
       "name": "real_bug",

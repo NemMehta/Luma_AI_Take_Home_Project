@@ -74,7 +74,7 @@ body {
 
 /* light-source glow — driven by a per-element --glow (set to a category token inline) */
 .glow {
-  box-shadow: 0 0 14px -2px var(--glow, transparent), 0 0 30px -8px var(--glow, transparent);
+  box-shadow: 0 0 10px -2px var(--glow, transparent), 0 0 20px -8px var(--glow, transparent);
 }
 .glow-pulse {
   animation: glowPulse 4s ease-in-out infinite;
