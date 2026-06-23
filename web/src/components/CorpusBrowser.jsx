@@ -4,7 +4,7 @@ import { Section, Spinner, ErrorBanner } from './ui.jsx';
 import CategoryBadge from './CategoryBadge.jsx';
 import ConfidenceBar from './ConfidenceBar.jsx';
 
-export default function CorpusBrowser() {
+export default function CorpusBrowser({ onCorpusLoaded, onCorpusResult }) {
   const [traces, setTraces] = useState([]);
   const [load, setLoad] = useState('loading'); // loading | loaded | error
   const [loadError, setLoadError] = useState('');
@@ -13,16 +13,17 @@ export default function CorpusBrowser() {
   useEffect(() => {
     let active = true;
     getCorpus()
-      .then((t) => active && (setTraces(t), setLoad('loaded')))
+      .then((t) => active && (setTraces(t), setLoad('loaded'), onCorpusLoaded?.(t.length)))
       .catch((e) => active && (setLoadError(e.message), setLoad('error')));
     return () => { active = false; };
-  }, []);
+  }, [onCorpusLoaded]);
 
   async function diagnose(name) {
     setRows((r) => ({ ...r, [name]: { status: 'analyzing' } }));
     try {
       const res = await diagnoseCorpus(name); // NESTED: { name, true_label, diagnosis }
       setRows((r) => ({ ...r, [name]: { status: 'done', result: res } }));
+      onCorpusResult?.(name, res); // lift the nested result up; Benchmark recomputes once all are in
     } catch (e) {
       setRows((r) => ({ ...r, [name]: { status: 'error', error: e.message } }));
     }

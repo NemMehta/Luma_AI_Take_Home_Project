@@ -1,8 +1,22 @@
+import { useCallback, useState } from 'react';
 import UploadDiagnose from './components/UploadDiagnose.jsx';
 import CorpusBrowser from './components/CorpusBrowser.jsx';
 import Benchmark from './components/Benchmark.jsx';
 
 export default function App() {
+  // Corpus diagnosis results lifted up so Benchmark can recompute the matrix
+  // live once every corpus trace has been diagnosed. Keyed by trace name; each
+  // value is the NESTED result { name, true_label, diagnosis }. Not persisted —
+  // a refresh resets this and Benchmark falls back to the saved snapshot.
+  const [corpusResults, setCorpusResults] = useState({});
+  const [corpusCount, setCorpusCount] = useState(0); // real corpus length, never hardcoded
+
+  const handleCorpusLoaded = useCallback((count) => setCorpusCount(count), []);
+  const handleCorpusResult = useCallback(
+    (name, result) => setCorpusResults((prev) => ({ ...prev, [name]: result })),
+    [],
+  );
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">
       <header className="border-b border-slate-200 bg-white">
@@ -21,8 +35,8 @@ export default function App() {
 
       <main className="mx-auto max-w-3xl space-y-8 px-4 py-8">
         <UploadDiagnose />
-        <CorpusBrowser />
-        <Benchmark />
+        <CorpusBrowser onCorpusLoaded={handleCorpusLoaded} onCorpusResult={handleCorpusResult} />
+        <Benchmark corpusResults={corpusResults} corpusCount={corpusCount} />
       </main>
 
       <footer className="mx-auto max-w-3xl px-4 pb-10 text-xs leading-relaxed text-slate-400">

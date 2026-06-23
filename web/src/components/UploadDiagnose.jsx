@@ -42,9 +42,8 @@ export default function UploadDiagnose() {
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
         onDrop={(e) => { e.preventDefault(); setDragOver(false); pick(e.dataTransfer.files?.[0]); }}
-        className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-8 text-center transition ${
-          dragOver ? 'border-violet-400 bg-violet-50' : 'border-slate-300 bg-slate-50 hover:border-slate-400'
-        }`}
+        className={`flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-8 text-center transition ${dragOver ? 'border-violet-400 bg-violet-50' : 'border-slate-300 bg-slate-50 hover:border-slate-400'
+          }`}
       >
         <input ref={inputRef} type="file" accept=".zip" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
         <p className="text-sm font-medium text-slate-700">
@@ -85,7 +84,12 @@ export default function UploadDiagnose() {
             <p className="text-sm font-semibold text-rose-800">Couldn’t diagnose this upload</p>
           </div>
           <p className="mt-2 text-sm leading-relaxed text-rose-700">{error}</p>
-          <p className="mt-2 text-xs font-medium text-rose-600">No diagnosis was run. Replace the file to try again.</p>
+          <button
+            onClick={() => inputRef.current?.click()}
+            className="mt-3 rounded-md border border-rose-300 px-3 py-1.5 text-sm font-medium text-rose-700 transition hover:bg-rose-100"
+          >
+            Choose a different file
+          </button>
         </div>
       )}
 

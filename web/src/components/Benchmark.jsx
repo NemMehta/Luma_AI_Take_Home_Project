@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react';
 import { getBenchmark } from '../api.js';
 import { Section, Spinner, ErrorBanner } from './ui.jsx';
 
-export default function Benchmark() {
-  const [data, setData] = useState(null);
+export default function Benchmark({ corpusResults = {}, corpusCount = 0 }) {
+  const [data, setData] = useState(null); // the saved snapshot from /benchmark
   const [load, setLoad] = useState('loading'); // loading | loaded | error
   const [error, setError] = useState('');
 
@@ -15,16 +15,53 @@ export default function Benchmark() {
     return () => { active = false; };
   }, []);
 
+  // Recompute live only once EVERY corpus trace has a (successful) diagnosis.
+  // Partial results leave the saved snapshot untouched. Computed in-render from
+  // props — nothing is saved, so a refresh returns to the committed snapshot.
+  const allDone = corpusCount > 0 && Object.keys(corpusResults).length >= corpusCount;
+  const live = allDone && data ? computeLiveBenchmark(corpusResults, data) : null;
+
   return (
     <Section index="03" title="Benchmark" description="Classifier accuracy on the labeled corpus.">
       {load === 'loading' && <Spinner label="Loading benchmark…" />}
       {load === 'error' && <ErrorBanner message={error} />}
-      {load === 'loaded' && data && <BenchmarkBody data={data} />}
+      {load === 'loaded' && data && <BenchmarkBody data={live ?? data} isLive={!!live} />}
     </Section>
   );
 }
 
-function BenchmarkBody({ data }) {
+// Build a confusion matrix from this session's corpus diagnoses, reusing the
+// saved snapshot's category set (same rows/cols) so the table keeps its shape.
+function computeLiveBenchmark(corpusResults, snapshot) {
+  const snapMatrix = snapshot.confusion_matrix || {};
+  const rows = Object.keys(snapMatrix);
+  const cols = Array.from(new Set(rows.flatMap((r) => Object.keys(snapMatrix[r] || {}))));
+
+  const matrix = {};
+  for (const r of rows) {
+    matrix[r] = {};
+    for (const c of cols) matrix[r][c] = 0;
+  }
+
+  let correct = 0;
+  let classified = 0;
+  for (const res of Object.values(corpusResults)) {
+    const actual = res.true_label;
+    const predicted = res.diagnosis?.category;
+    classified += 1;
+    if (actual === predicted) correct += 1;
+    if (matrix[actual] && predicted in matrix[actual]) matrix[actual][predicted] += 1;
+  }
+
+  return {
+    confusion_matrix: matrix,
+    accuracy: classified ? correct / classified : 0,
+    correct,
+    classified,
+  };
+}
+
+function BenchmarkBody({ data, isLive }) {
   const matrix = data.confusion_matrix || {};
   const rows = Object.keys(matrix);
   const cols = Array.from(new Set(rows.flatMap((r) => Object.keys(matrix[r] || {})))).sort();
@@ -37,7 +74,9 @@ function BenchmarkBody({ data }) {
         <span className="text-sm text-slate-500">accuracy ({data.correct}/{data.classified} correct)</span>
       </div>
       <p className="mt-1 text-xs text-slate-400">
-        A snapshot from one benchmark run on the labeled corpus — not a fixed, final score.
+        {isLive
+          ? 'Recomputed live from your corpus diagnoses this session. The model is non-deterministic, so this may differ from the committed baseline.'
+          : 'Showing the committed benchmark, a saved run across all labeled samples kept stable for reproducibility. Diagnose all corpus samples in section 02 to recompute this live from fresh predictions.'}
       </p>
 
       <p className="mt-5 text-xs text-slate-500">
