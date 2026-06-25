@@ -56,7 +56,7 @@ export default function App() {
           style={{ backgroundImage: 'radial-gradient(closest-side, var(--brand-to), transparent 70%), radial-gradient(closest-side, var(--brand-from), transparent 70%)' }}
         />
         <div className="relative mx-auto max-w-6xl px-4 py-8">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h1 className="brand-gradient-text text-3xl font-medium tracking-tight">FlakyLens</h1>
               <p className="mt-1 text-base font-medium text-accent">A clearer solution to automation.</p>

@@ -5,7 +5,7 @@ import { Spinner } from './ui.jsx';
 // appended, so you can see *why* a key isn't usable — not just that it's missing.
 export default function ModelSelector({ models, value, onChange, status, error }) {
   const selectClass =
-    'rounded-md border border-hair bg-surface-2 px-3 py-1.5 text-sm text-ink ' +
+    'min-w-0 max-w-full rounded-md border border-hair bg-surface-2 px-3 py-1.5 text-sm text-ink ' +
     'transition hover:border-muted disabled:cursor-not-allowed disabled:text-faint';
 
   return (
