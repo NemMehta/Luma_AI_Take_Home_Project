@@ -1,17 +1,19 @@
-"""Factory that selects an OpenAI-compatible provider from the environment.
+"""Factory that selects an LLM provider client from the environment.
 
-Provider config (base URL, model id) lives here, not in the client, so the same
-``OpenAICompatibleClient`` backs every provider — only the config differs.
+Anthropic uses its own ``AnthropicClient``. OpenAI, GitHub Models, and OpenRouter
+are OpenAI-compatible and share ``OpenAICompatibleClient``; their per-provider config
+(base URL, model id) lives here — only that config differs between them.
 """
 
 from __future__ import annotations
 
 import os
 
+from app.llm.anthropic_client import AnthropicClient
 from app.llm.base import LLMClient
 from app.llm.openai_compatible import OpenAICompatibleClient
 
-# OpenAI (preferred when OPENAI_API_KEY is set — e.g. a reviewer's own key).
+# OpenAI (used when no Anthropic key is set — e.g. a reviewer's own key).
 # gpt-4o is vision-capable.
 OPENAI_BASE_URL = "https://api.openai.com/v1"
 OPENAI_MODEL = "gpt-4o"
@@ -39,11 +41,19 @@ def _is_real(value: str | None) -> bool:
 def get_llm_client() -> LLMClient:
     """Return a client for the first provider with a real (non-placeholder) key.
 
-    Order: OpenAI (OPENAI_API_KEY), GitHub Models (GITHUB_TOKEN), then OpenRouter
-    (OPENROUTER_API_KEY). OpenAI is checked first so a reviewer's real key wins
-    even if a stub GITHUB_TOKEN is still in the environment.
+    Order: Anthropic (ANTHROPIC_API_KEY), OpenAI (OPENAI_API_KEY), GitHub Models
+    (GITHUB_TOKEN), then OpenRouter (OPENROUTER_API_KEY). Earlier providers win, so
+    a reviewer's real key takes precedence even if a stub for a later one is still
+    in the environment. Anthropic uses its own client (AnthropicClient); the model
+    id is that client's default rather than config here, since — unlike the shared
+    OpenAI-compatible providers — it is not selected by base URL.
     Add a provider by checking its key here and returning a configured client.
     """
+    # Anthropic wins first; its model id lives in AnthropicClient, not configured here.
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+    if _is_real(anthropic_key):
+        return AnthropicClient(api_key=anthropic_key)
+
     openai_key = os.environ.get("OPENAI_API_KEY")
     if _is_real(openai_key):
         return OpenAICompatibleClient(
@@ -63,6 +73,6 @@ def get_llm_client() -> LLMClient:
         )
 
     raise RuntimeError(
-        "No LLM provider key found. Set OPENAI_API_KEY, GITHUB_TOKEN, or "
-        "OPENROUTER_API_KEY (e.g. in your .env)."
+        "No LLM provider key found. Set ANTHROPIC_API_KEY, OPENAI_API_KEY, "
+        "GITHUB_TOKEN, or OPENROUTER_API_KEY (e.g. in your .env)."
     )
