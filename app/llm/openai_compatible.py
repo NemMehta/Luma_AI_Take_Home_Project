@@ -14,6 +14,10 @@ from openai import OpenAI
 
 from app.llm.base import LLMClient
 
+# verify() ping: cap the wait so one slow/unreachable provider can't stall the
+# whole /models check (the pings run concurrently, but each still needs a bound).
+_VERIFY_TIMEOUT_S = 10.0
+
 
 class OpenAICompatibleClient(LLMClient):
     """LLMClient backed by any OpenAI-compatible chat completions endpoint."""
@@ -39,6 +43,16 @@ class OpenAICompatibleClient(LLMClient):
             **extra,
         )
         return response.choices[0].message.content or ""
+
+    def verify(self) -> None:
+        # Smallest legal chat call: one output token, plain text. Raises on a bad
+        # key (401/403), a model id this key can't use (404), or a rate limit (429).
+        self._client.chat.completions.create(
+            model=self._model,
+            max_tokens=1,
+            messages=[{"role": "user", "content": "ping"}],
+            timeout=_VERIFY_TIMEOUT_S,
+        )
 
 
 def _image_data_url(path: str) -> str:

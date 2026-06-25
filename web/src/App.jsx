@@ -1,7 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import UploadDiagnose from './components/UploadDiagnose.jsx';
 import CorpusBrowser from './components/CorpusBrowser.jsx';
 import Benchmark from './components/Benchmark.jsx';
+import ModelSelector from './components/ModelSelector.jsx';
+import { getModels } from './api.js';
 
 export default function App() {
   // Corpus diagnosis results lifted up so Benchmark can recompute the matrix
@@ -10,6 +12,33 @@ export default function App() {
   // a refresh resets this and Benchmark falls back to the saved snapshot.
   const [corpusResults, setCorpusResults] = useState({});
   const [corpusCount, setCorpusCount] = useState(0); // real corpus length, never hardcoded
+
+  // Global model choice, shared by both flows (upload + corpus). Availability is a
+  // real one-token ping per provider (see GET /models). Default to the first
+  // available model; '' until verification finishes, which makes both API calls
+  // omit the param and fall back to the backend's priority order.
+  const [models, setModels] = useState([]);
+  const [selectedModel, setSelectedModel] = useState('');
+  const [modelsStatus, setModelsStatus] = useState('loading'); // loading | loaded | error
+  const [modelsError, setModelsError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    getModels()
+      .then((m) => {
+        if (!active) return;
+        setModels(m);
+        const firstAvailable = m.find((x) => x.available);
+        setSelectedModel(firstAvailable ? firstAvailable.id : '');
+        setModelsStatus('loaded');
+      })
+      .catch((e) => {
+        if (!active) return;
+        setModelsError(e.message);
+        setModelsStatus('error');
+      });
+    return () => { active = false; };
+  }, []);
 
   const handleCorpusLoaded = useCallback((count) => setCorpusCount(count), []);
   const handleCorpusResult = useCallback(
@@ -27,8 +56,21 @@ export default function App() {
           style={{ backgroundImage: 'radial-gradient(closest-side, var(--brand-to), transparent 70%), radial-gradient(closest-side, var(--brand-from), transparent 70%)' }}
         />
         <div className="relative mx-auto max-w-6xl px-4 py-8">
-          <h1 className="brand-gradient-text text-3xl font-medium tracking-tight">FlakyLens</h1>
-          <p className="mt-1 text-base font-medium text-accent">A clearer solution to automation.</p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="brand-gradient-text text-3xl font-medium tracking-tight">FlakyLens</h1>
+              <p className="mt-1 text-base font-medium text-accent">A clearer solution to automation.</p>
+            </div>
+            <div className="shrink-0 pt-1">
+              <ModelSelector
+                models={models}
+                value={selectedModel}
+                onChange={setSelectedModel}
+                status={modelsStatus}
+                error={modelsError}
+              />
+            </div>
+          </div>
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">
             Upload a Playwright{' '}
             <code className="rounded bg-surface-2 px-1 py-0.5 text-xs text-ink">trace.zip</code> and FlakyLens reads the failure
@@ -42,11 +84,15 @@ export default function App() {
       <main className="mx-auto flex w-full max-w-6xl flex-col gap-6 px-4 py-8 lg:min-h-0 lg:flex-row lg:overflow-hidden">
         {/* left pane: section 01 — stays put while the right pane scrolls */}
         <div className="lg:h-full lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
-          <UploadDiagnose />
+          <UploadDiagnose selectedModel={selectedModel} />
         </div>
         {/* right pane: sections 02 + 03 — scrolls independently of the page */}
         <div className="space-y-6 lg:h-full lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:pr-1">
-          <CorpusBrowser onCorpusLoaded={handleCorpusLoaded} onCorpusResult={handleCorpusResult} />
+          <CorpusBrowser
+            selectedModel={selectedModel}
+            onCorpusLoaded={handleCorpusLoaded}
+            onCorpusResult={handleCorpusResult}
+          />
           <Benchmark corpusResults={corpusResults} corpusCount={corpusCount} />
         </div>
       </main>

@@ -22,6 +22,15 @@ export async function getCorpus() {
   return data.traces ?? [];
 }
 
+// Configured models and whether each is live right now (real one-token ping,
+// cached server-side). Priority order, so the first `available` is the default.
+export async function getModels() {
+  const res = await fetch('/models');
+  if (!res.ok) throw await toError(res);
+  const data = await res.json(); // { models: [{id, label, model, available, reason}] }
+  return data.models ?? [];
+}
+
 export async function getBenchmark() {
   const res = await fetch('/benchmark');
   if (!res.ok) throw await toError(res);
@@ -29,17 +38,21 @@ export async function getBenchmark() {
 }
 
 // FLAT: { category, confidence, reasoning }
-export async function diagnoseUpload(file) {
+// `model` (optional) is a provider id from getModels(); omitted => backend default.
+export async function diagnoseUpload(file, model) {
   const form = new FormData();
   form.append('file', file);
+  if (model) form.append('model', model);
   const res = await fetch('/diagnose', { method: 'POST', body: form });
   if (!res.ok) throw await toError(res);
   return res.json();
 }
 
 // NESTED: { name, true_label, diagnosis: { category, confidence, reasoning } }
-export async function diagnoseCorpus(name) {
-  const res = await fetch(`/corpus/${encodeURIComponent(name)}/diagnose`);
+// `model` (optional) is a provider id from getModels(); omitted => backend default.
+export async function diagnoseCorpus(name, model) {
+  const query = model ? `?model=${encodeURIComponent(model)}` : '';
+  const res = await fetch(`/corpus/${encodeURIComponent(name)}/diagnose${query}`);
   if (!res.ok) throw await toError(res);
   return res.json();
 }

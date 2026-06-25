@@ -24,6 +24,10 @@ DEFAULT_MODEL = "claude-haiku-4-5"
 # output and keeps the (non-streaming) request well under the SDK's timeout.
 MAX_TOKENS = 4096
 
+# verify() ping: cap the wait so one slow/unreachable provider can't stall the
+# whole /models check (the pings run concurrently, but each still needs a bound).
+_VERIFY_TIMEOUT_S = 10.0
+
 # Anthropic has no OpenAI-style response_format, so JSON mode is prompted: instruct
 # the model to emit exactly one JSON object and nothing else. The caller's prompt
 # still describes the desired shape (see LLMClient.generate).
@@ -62,6 +66,16 @@ class AnthropicClient(LLMClient):
             messages=[{"role": "user", "content": content}],
         )
         return "".join(block.text for block in response.content if block.type == "text")
+
+    def verify(self) -> None:
+        # Smallest legal Messages call: one output token, no image. Raises on a bad
+        # key (401/403), a model id this key can't use (404), or a rate limit (429).
+        self._client.messages.create(
+            model=self._model,
+            max_tokens=1,
+            messages=[{"role": "user", "content": "ping"}],
+            timeout=_VERIFY_TIMEOUT_S,
+        )
 
 
 def _encode_image(path: str) -> tuple[str, str]:

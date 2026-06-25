@@ -29,3 +29,14 @@ class LLMClient(ABC):
             The model's text response.
         """
         ...
+
+    @abstractmethod
+    def verify(self) -> None:
+        """Make a minimal live request to confirm the key and model actually work.
+
+        Returns ``None`` on success; lets the provider's own exception propagate on
+        failure (bad key, model not accessible, rate limit, timeout). Used to mark a
+        provider available/unavailable in the model picker without running a full
+        diagnosis. Should be as cheap as the API allows (a single output token).
+        """
+        ...

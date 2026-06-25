@@ -3,7 +3,7 @@ import { diagnoseUpload } from '../api.js';
 import { Section, Spinner } from './ui.jsx';
 import DiagnosisCard from './DiagnosisCard.jsx';
 
-export default function UploadDiagnose() {
+export default function UploadDiagnose({ selectedModel }) {
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState('idle'); // idle | analyzing | done | rejected | error
   const [result, setResult] = useState(null);
@@ -25,7 +25,7 @@ export default function UploadDiagnose() {
     setError('');
     setResult(null);
     try {
-      setResult(await diagnoseUpload(file)); // FLAT shape
+      setResult(await diagnoseUpload(file, selectedModel)); // FLAT shape
       setStatus('done');
     } catch (e) {
       setError(e.message);

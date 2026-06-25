@@ -158,8 +158,13 @@ def _parse_result(raw: str) -> DiagnosisResult:
     return DiagnosisResult.model_validate(data)
 
 
-def classify(bundle: EvidenceBundle, screenshot_path: str | None = None) -> DiagnosisResult:
-    client = get_llm_client()
+def classify(
+    bundle: EvidenceBundle,
+    screenshot_path: str | None = None,
+    *,
+    provider_id: str | None = None,
+) -> DiagnosisResult:
+    client = get_llm_client(provider_id)
     prompt = _build_prompt(bundle)
     try:
         raw = client.generate(prompt, image=screenshot_path, json_object=True)
@@ -173,7 +178,7 @@ def classify(bundle: EvidenceBundle, screenshot_path: str | None = None) -> Diag
     return _parse_result(raw)
 
 
-def classify_trace(zip_path: str) -> DiagnosisResult:
+def classify_trace(zip_path: str, *, provider_id: str | None = None) -> DiagnosisResult:
     bundle = build_evidence_bundle(zip_path)  # raises NotATraceError / BadZipFile
     # Evidence-sufficiency guard, right after extraction: never force the
     # classifier to pick a category from an empty bundle. Real traces (corpus
@@ -184,7 +189,7 @@ def classify_trace(zip_path: str) -> DiagnosisResult:
             "actions, or network entries"
         )
     with _screenshot_tempfile(zip_path, bundle) as screenshot_path:
-        return classify(bundle, screenshot_path)
+        return classify(bundle, screenshot_path, provider_id=provider_id)
 
 
 def main(argv=None):

@@ -16,12 +16,14 @@ from contextlib import suppress
 from pathlib import Path
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.staticfiles import StaticFiles
 from openai import APIStatusError
 
 from app.diagnosis.classifier import InsufficientEvidenceError, classify_trace
 from app.diagnosis.ingest import NotATraceError
+from app.llm.availability import get_model_availability
+from app.llm.factory import ProviderUnavailableError, UnknownProviderError, get_llm_client
 
 load_dotenv()  # app entry point: load the provider key from .env at startup
 
@@ -52,17 +54,28 @@ def _load_manifest() -> dict:
         raise HTTPException(status_code=500, detail="demo corpus manifest is missing")
 
 
-def _classify_or_error(zip_path: str):
+def _classify_or_error(zip_path: str, provider_id: str | None = None):
     """Run the classifier, turning provider HTTP errors into clean responses
     instead of raw 500s:
 
+      - unknown model id          -> 400
+      - chosen model has no key   -> 409
       - 401/403 (bad/invalid key) -> 502
       - 429 (rate limited)        -> 503, retry shortly
 
-    Other errors propagate unchanged.
+    Other errors propagate unchanged. The model choice is validated up front (a
+    cheap, network-free client build) so a bad id fails fast, before the zip is
+    even ingested.
     """
+    if provider_id is not None:
+        try:
+            get_llm_client(provider_id)
+        except UnknownProviderError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except ProviderUnavailableError as exc:
+            raise HTTPException(status_code=409, detail=str(exc)) from exc
     try:
-        return classify_trace(zip_path)
+        return classify_trace(zip_path, provider_id=provider_id)
     except APIStatusError as exc:
         if exc.status_code in (401, 403):
             raise HTTPException(
@@ -82,12 +95,26 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/models")
+def models() -> dict:
+    """List the configured models and whether each is live right now.
+
+    Each entry is {id, label, model, available, reason}. ``available`` reflects a
+    real one-token ping (cached briefly), not just a key being present, so the UI
+    can offer the working ones and grey out the rest. Order is the priority order,
+    so the first ``available`` entry is the same default the backend would pick.
+    """
+    return {"models": get_model_availability()}
+
+
 @app.post("/diagnose")
-def diagnose(file: UploadFile = File(...)):
+def diagnose(file: UploadFile = File(...), model: str | None = Form(None)):
     """Diagnose an uploaded trace.zip and return the structured diagnosis.
 
-    Rejects bad uploads at the boundary (422) instead of forcing the classifier
-    to guess. Two cases, never reaching the LLM:
+    ``model`` (optional) is the provider id from GET /models; when omitted the
+    backend falls back to the priority order. Rejects bad uploads at the boundary
+    (422) instead of forcing the classifier to guess. Two cases, never reaching the
+    LLM:
       - not a trace: a corrupt/non-zip file (BadZipFile) or a zip with no trace
         streams (NotATraceError).
       - insufficient evidence: a real trace archive that yields nothing usable.
@@ -97,7 +124,7 @@ def diagnose(file: UploadFile = File(...)):
         with os.fdopen(fd, "wb") as fh:
             fh.write(file.file.read())
         try:
-            return _classify_or_error(tmp)
+            return _classify_or_error(tmp, provider_id=model)
         except (NotATraceError, zipfile.BadZipFile) as exc:
             raise HTTPException(status_code=422, detail=_NOT_A_TRACE_MESSAGE) from exc
         except InsufficientEvidenceError as exc:
@@ -114,8 +141,12 @@ def corpus() -> dict:
 
 
 @app.get("/corpus/{name}/diagnose")
-def diagnose_corpus(name: str) -> dict:
-    """Run diagnosis on one seeded corpus trace, alongside its known label."""
+def diagnose_corpus(name: str, model: str | None = None) -> dict:
+    """Run diagnosis on one seeded corpus trace, alongside its known label.
+
+    ``model`` (optional) is the provider id from GET /models; when omitted the
+    backend falls back to the priority order.
+    """
     traces = _load_manifest().get("traces", [])
     entry = next((t for t in traces if t.get("name") == name), None)
     if entry is None:
@@ -127,7 +158,7 @@ def diagnose_corpus(name: str) -> dict:
     return {
         "name": name,
         "true_label": entry.get("label"),
-        "diagnosis": _classify_or_error(str(zip_path)),
+        "diagnosis": _classify_or_error(str(zip_path), provider_id=model),
     }
 
 

@@ -5,7 +5,7 @@ import CategoryName from './CategoryName.jsx';
 import ConfidenceBar from './ConfidenceBar.jsx';
 import { categoryBlurb } from '../categories.js';
 
-export default function CorpusBrowser({ onCorpusLoaded, onCorpusResult }) {
+export default function CorpusBrowser({ selectedModel, onCorpusLoaded, onCorpusResult }) {
   const [traces, setTraces] = useState([]);
   const [load, setLoad] = useState('loading'); // loading | loaded | error
   const [loadError, setLoadError] = useState('');
@@ -24,7 +24,7 @@ export default function CorpusBrowser({ onCorpusLoaded, onCorpusResult }) {
   async function diagnose(name) {
     setRows((r) => ({ ...r, [name]: { status: 'analyzing' } }));
     try {
-      const res = await diagnoseCorpus(name); // NESTED: { name, true_label, diagnosis }
+      const res = await diagnoseCorpus(name, selectedModel); // NESTED: { name, true_label, diagnosis }
       setRows((r) => ({ ...r, [name]: { status: 'done', result: res } }));
       onCorpusResult?.(name, res); // lift the nested result up; Benchmark recomputes once all are in
     } catch (e) {

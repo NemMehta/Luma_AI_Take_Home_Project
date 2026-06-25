@@ -13,6 +13,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/health': API,
+      '/models': API,
       '/diagnose': API,
       '/corpus': API,
       '/benchmark': API,
