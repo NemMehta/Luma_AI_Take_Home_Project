@@ -1,3 +1,3 @@
 # Video Walkthrough
 
-<replace with your Loom link or Google Drive URL>
+<https://drive.google.com/file/d/1C0T5dxp7eYhRj8AutrMqiq-K5dBFt27V/view?usp=sharing>
