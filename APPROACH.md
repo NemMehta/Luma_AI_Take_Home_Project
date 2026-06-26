@@ -1,0 +1,52 @@
+## What I built and why I picked this particular problem?
+
+I built [FlakyLens](https://flakylens.onrender.com) (Clickable Link), an AI root-cause analyzer for failed Playwright end-to-end tests. Playwright runs automated browser tests, little robots that click through a web app to confirm it still works, and those tests fail constantly. The failure is rarely the expensive part. The expensive part is figuring out why, because before anyone can act they have to crack open the trace and answer one question: what kind of failure is this? A renamed button the test owner can fix, an app that is genuinely broken and needs a developer now, a test that raced ahead of the page, or just a network hiccup that has nothing to do with the code. Each answer sends the problem to a different person with a different urgency, and getting it right is a judgment call made from messy, incomplete clues. Across a big team it happens thousands of times a week. FlakyLens takes any trace.zip, pulls out an evidence bundle, hands it and the failure screenshot to a vision-capable model, and returns a structured diagnosis: one of four categories, a confidence score, and a reasoning paragraph that points to the evidence it actually used.
+
+I picked this problem because it is one of the few places where AI earns its keep instead of being decoration. I came to it through my own job search, where I started using Playwright to automate parts of the hunt, got curious about how teams really use it, and dug through engineering blogs and Reddit threads to find the part that genuinely hurts. The answer was triage, the unglamorous work that mature teams pour months into, usually with brittle rule-based systems that match error strings and count how often a test flakes. FlakyLens takes a different route and lets a model reason through the evidence each time, which is the real lever: AI changing how the feature works rather than just writing the code behind it. It is a deliberate fusion of two of the briefs, the mini-app I would actually open twice in its form and the rebuild-the-hard-part problem in its substance. The hardest part was never coaxing a label out of a model. It was making that label trustworthy enough that an engineer staring at a broken test will believe it, which is why the interface leads with the reasoning and the confidence instead of handing over a verdict that only looks authoritative.
+
+## Key decisions and Tradeoffs ?
+
+- I used Playwright’s error-context page snapshot as the main DOM signal. Rebuilding every incremental frame snapshot would have added a lot of complexity for noisy data. The error-context snapshot gives the DOM at the exact failure moment, which is the signal the classifier actually needs.
+
+- I kept the benchmark to four clean categories: stale_selector, real_bug, flaky_timing, and network_failure. I dropped race_condition because it overlaps too much with flaky_timing in a single trace. A smaller benchmark with honest labels is better than a larger one with muddy ground truth.
+
+- I put every model behind one LLMClient interface. That paid off during development. I swapped OpenRouter, GitHub Models, OpenAI, and later Anthropic without changing the diagnosis code. Anthropic was the real test because it is not OpenAI-compatible, and the seam still held.
+
+- I did not hide the flaky_timing vs real_bug weakness. Both can look like the same count assertion. A single trace often cannot prove whether waiting longer would have fixed the failure. I improved the prompt, but I chose not to over-tune it to four examples.
+
+- I built the benchmark before the web UI. That forced me to measure the classifier instead of just demoing it. The deployed app shows a committed benchmark snapshot, and the matrix can also recompute live once all corpus examples are diagnosed.
+
+- I added upload validation before any model call. A file must actually look like a Playwright trace, and the extracted evidence must be non-empty. Bad uploads return a clear error instead of a confident fake diagnosis.
+
+- I split trace generation from diagnosis. The harness runs real browsers to create traces and benchmarks. The deployed app only reads trace.zip files and diagnoses them, so it stays small and does not need browser tools. The tradeoff is keeping demo traces copied in both places.
+
+- I kept the app as one deployable service. FastAPI serves both the API and the built React frontend, so there is one container, one URL, and no CORS setup. The Docker build uses Node only to build the frontend, then ships a Python-only final image. At a larger scale I would move the frontend to a CDN and scale the API separately.
+
+- I made the AI layer defensive. The classifier asks for structured JSON and validates it with Pydantic. Provider keys ignore obvious placeholders, so copied .env.example stubs do not accidentally select the wrong provider. Auth errors, rate limits, and bad uploads return clear messages instead of raw failures.
+
+- I designed the UI to be honest, not just polished. It shows confidence and reasoning, not only the label. The corpus hides the known label until after diagnosis. The benchmark is framed as a representative run, because the model can vary near the flaky_timing and real_bug boundary.
+
+Smaller calls: I used JSX instead of TypeScript because the frontend is small. I lifted shared state into App instead of using Context because the component tree is flat. Screenshots stay inside the trace until diagnosis time, then get extracted to a temp file and cleaned up.
+
+## What I intentionally left out?
+
+A couple extensions were out of scope for a one-day build but are things the architecture was deliberately shaped to accommodate. I'm listing each with the design decision that makes it a clean addition rather than a rewrite, because where a system can grow is as much a design outcome as what it does today. These were never integrated purely because of the time constraint and the tradeoff that it wouldn't be as polished as I would like them to be based on the limitations of the Models available to me during the development phase.
+
+- TraceDiff is the next best improvement. Today the tool looks at one failed trace, which makes flaky_timing and real_bug hard to separate. Comparing the failed trace with a passing trace of the same test would show what actually changed. The app already saves passing baselines, so this would extend the current design instead of replacing it.
+
+- The same trace.zip input can support queues, CI, and Playwright reporters. Right now the API takes one trace.zip and returns a diagnosis. Later, a queue could process slow jobs in the background, a Playwright reporter could send traces automatically when tests fail, and CI could post the diagnosis into a pull request. All of that reuses the same diagnosis path.
+
+## What breaks first under pressure?
+
+There’s a couple of things that break under pressure. The first is Flaky_timing vs Real_bug diagnosis. It's so similar in its error message to behaviour to the end result when performing the trace, that it completely breaks even when tested under the best vision models that the web has to offer. Both failures surface as the same symptoms - an assertion that expected one count and got another. I zoomed in on the reason and I came to the conclusion that Trace records what happened up to the moment of failure, not what would potentially happen if we gave it more time. The second and more critical thing that breaks is Malformed but valid looking zip. If you give the web app an error free zip, it has no idea that it's error free and the model hallucinates big time. It's even worse when a file that is a valid zip with some trace-like structure but a corrupted or unexpected internal layout (a truncated trace, a newer Playwright trace format, a zip with the right names but garbage contents). The best way to deal with this is using the data of the users that use this web app and train a custom AI vision model that is specifically good at diagnosing traces. Of course that has major limitations in terms of user privacy and need for a lot of data before we can confidently claim that capability.
+
+## What I’d build next?
+
+This answer has multiple points I'd like to touch on. Userbase and Features to be added :
+
+- What is the core user base ? and how do I expand that? What features would I add for that?
+
+This is a question I pondered on for a long time, and I have an idea on how to answer it. The userbase at this stage of the app is purely software engineers, people who use playwright internally in an enterprise on the daily. They are the core user base who will utilize most of the features we have to offer, and will demand a quality experience. They are also the subset of people with the most insight on improvements and also the best way to collect the best data in case we use it to train a custom proprietary model specialized in playwright automation error detection.
+This transitions to the second question, how do I expand it? This is where we introduce the second form of the tool, which has multiple custom automation workflows. Imagine a scenario where you want to automate your job applications. You give your credentials for linkedin login, playwright applies all the filters and clicks the matching jobs, where you're taken to their portal, you can then use autofill to fill out all the details and upload your resume. We already have the API to call an LLM which can also be used to fill out any questions asked on the application page. Anything that might require nuanced reasoning based on the data of the candidate's profile and their experiences and projects, which can be done in the setup process. After this, we can then validate the entire trace using FlakyLens and make sure we catch any bug in the workflow in present and in future with any updates. I have built a CLI tool in the past that I can then integrate into this which has an agentic mode where it calls the LLM to debug a codebase based on a description of the problem, something FlakyLens already does. We can use this to debug the trace and validate the whole workflow automatically, generating a report for the user to check and interfere if they see an issue with the fix. This will open up so many possibilities for the use case and populate the user pool exponentially.
+
+Now this is a very ambitious idea but it has some very achievable building blocks which when clicked together would really morph how this tool is used.
